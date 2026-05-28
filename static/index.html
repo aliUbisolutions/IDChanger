@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IDChanger</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, sans-serif; background: #f0f2f5; color: #1a1a2e; min-height: 100vh; }
+  header { background: #1a1a2e; color: #fff; padding: 1rem 2rem; display: flex; align-items: center; gap: 1rem; }
+  header h1 { font-size: 1.4rem; letter-spacing: 1px; }
+  header span { opacity: .5; font-size: .85rem; }
+  .layout { display: grid; grid-template-columns: 300px 1fr; gap: 1.5rem; padding: 1.5rem; max-width: 1400px; margin: 0 auto; }
+  .card { background: #fff; border-radius: 10px; padding: 1.25rem; box-shadow: 0 2px 8px rgba(0,0,0,.07); }
+  .card h2 { font-size: .95rem; font-weight: 600; color: #555; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 1rem; border-bottom: 2px solid #f0f2f5; padding-bottom: .5rem; }
+  label { display: block; font-size: .82rem; color: #666; margin-bottom: .25rem; margin-top: .75rem; }
+  label:first-of-type { margin-top: 0; }
+  input, select { width: 100%; padding: .45rem .65rem; border: 1px solid #ddd; border-radius: 6px; font-size: .9rem; background: #fafafa; }
+  input:focus, select:focus { outline: none; border-color: #4f7cff; background: #fff; }
+  .btn { display: inline-flex; align-items: center; gap: .4rem; padding: .5rem 1.1rem; border: none; border-radius: 6px; cursor: pointer; font-size: .88rem; font-weight: 500; transition: opacity .15s; }
+  .btn:hover { opacity: .85; }
+  .btn-primary { background: #4f7cff; color: #fff; }
+  .btn-danger { background: #e74c3c; color: #fff; }
+  .btn-success { background: #27ae60; color: #fff; }
+  .btn-outline { background: transparent; border: 1px solid #ccc; color: #555; }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .conn-list { list-style: none; margin-top: .5rem; }
+  .conn-list li { display: flex; align-items: center; justify-content: space-between; padding: .4rem .6rem; border-radius: 6px; cursor: pointer; font-size: .88rem; margin-bottom: .3rem; border: 2px solid transparent; }
+  .conn-list li:hover { background: #f0f2f5; }
+  .conn-list li.active { border-color: #4f7cff; background: #eef2ff; }
+  .conn-badge { font-size: .7rem; padding: .1rem .4rem; border-radius: 4px; background: #e8eaed; color: #555; }
+  .conn-badge.postgres { background: #dbeafe; color: #1d4ed8; }
+  .conn-badge.sqlserver { background: #fce7f3; color: #9d174d; }
+  .steps { display: flex; flex-direction: column; gap: 1rem; }
+  .step { border: 1px solid #e8eaed; border-radius: 8px; overflow: hidden; }
+  .step-header { display: flex; align-items: center; gap: .75rem; padding: .75rem 1rem; background: #f8f9fa; font-weight: 500; font-size: .9rem; cursor: pointer; user-select: none; }
+  .step-num { width: 24px; height: 24px; border-radius: 50%; background: #4f7cff; color: #fff; display: flex; align-items: center; justify-content: center; font-size: .75rem; font-weight: 700; flex-shrink: 0; }
+  .step-num.done { background: #27ae60; }
+  .step-body { padding: 1rem; display: none; }
+  .step-body.open { display: block; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+  .mapping-table { width: 100%; border-collapse: collapse; font-size: .88rem; margin-top: .5rem; }
+  .mapping-table th { text-align: left; padding: .4rem .6rem; background: #f0f2f5; font-weight: 600; font-size: .78rem; color: #555; }
+  .mapping-table td { padding: .35rem .5rem; border-bottom: 1px solid #f0f2f5; }
+  .mapping-table input { border: 1px solid #e0e0e0; border-radius: 4px; padding: .3rem .5rem; font-size: .85rem; }
+  .mapping-table .del-btn { background: none; border: none; color: #e74c3c; cursor: pointer; font-size: 1.1rem; line-height: 1; }
+  .preview-table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+  .preview-table th { text-align: left; padding: .5rem .75rem; background: #1a1a2e; color: #fff; font-size: .8rem; }
+  .preview-table td { padding: .45rem .75rem; border-bottom: 1px solid #f0f2f5; }
+  .preview-table tr:hover td { background: #f8f9fa; }
+  .arrow { color: #4f7cff; font-weight: 700; }
+  .count-badge { background: #eef2ff; color: #4f7cff; border-radius: 12px; padding: .1rem .55rem; font-size: .78rem; font-weight: 600; }
+  .toast { position: fixed; bottom: 1.5rem; right: 1.5rem; padding: .75rem 1.25rem; border-radius: 8px; color: #fff; font-size: .9rem; z-index: 9999; opacity: 0; transition: opacity .3s; pointer-events: none; }
+  .toast.show { opacity: 1; }
+  .toast.success { background: #27ae60; }
+  .toast.error { background: #e74c3c; }
+  .empty-state { text-align: center; padding: 2rem; color: #aaa; font-size: .9rem; }
+  .actions { display: flex; gap: .75rem; margin-top: 1rem; flex-wrap: wrap; }
+  #apply-result { margin-top: 1rem; padding: .75rem 1rem; border-radius: 8px; background: #d4edda; color: #155724; display: none; font-size: .9rem; }
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 100; display: none; align-items: center; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: #fff; border-radius: 12px; padding: 1.75rem; width: 420px; max-width: 95vw; box-shadow: 0 8px 32px rgba(0,0,0,.18); }
+  .modal h3 { margin-bottom: 1.25rem; font-size: 1.05rem; }
+  .modal .actions { justify-content: flex-end; }
+  .section-label { font-size: .78rem; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: .5px; margin: 1rem 0 .5rem; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>IDChanger</h1>
+  <span>DB Column Value Remapper</span>
+</header>
+
+<div class="layout">
+  <!-- LEFT: Connections -->
+  <div>
+    <div class="card">
+      <h2>Connections</h2>
+      <ul class="conn-list" id="conn-list"></ul>
+      <button class="btn btn-primary" style="width:100%;margin-top:.75rem" onclick="openAddConn()">+ Add Connection</button>
+    </div>
+  </div>
+
+  <!-- RIGHT: Steps -->
+  <div class="steps" id="steps">
+    <!-- Step 1: Table & Column -->
+    <div class="step" id="step1">
+      <div class="step-header" onclick="toggleStep('step1')">
+        <div class="step-num" id="step1-num">1</div>
+        <span>Select Table &amp; Column</span>
+      </div>
+      <div class="step-body open" id="step1-body">
+        <div class="empty-state" id="no-conn-msg">Select a connection on the left to begin.</div>
+        <div id="table-col-form" style="display:none">
+          <div class="row2">
+            <div>
+              <label>Schema</label>
+              <input id="schema-input" value="public" oninput="resetTableList()">
+            </div>
+            <div>
+              <label>&nbsp;</label>
+              <button class="btn btn-outline" onclick="loadTables()">Load Tables</button>
+            </div>
+          </div>
+          <label>Table</label>
+          <select id="table-select" onchange="loadColumns()"><option value="">— select table —</option></select>
+          <label>Column to update</label>
+          <select id="col-select" onchange="markStep1Done()"><option value="">— select column —</option></select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2: Conversion Mappings -->
+    <div class="step" id="step2">
+      <div class="step-header" onclick="toggleStep('step2')">
+        <div class="step-num" id="step2-num">2</div>
+        <span>Define Conversion Mappings</span>
+      </div>
+      <div class="step-body" id="step2-body">
+        <table class="mapping-table">
+          <thead><tr><th>From (current value)</th><th>To (new value)</th><th></th></tr></thead>
+          <tbody id="mapping-rows"></tbody>
+        </table>
+        <button class="btn btn-outline" style="margin-top:.75rem;font-size:.82rem" onclick="addMappingRow()">+ Add Row</button>
+        <div class="actions">
+          <button class="btn btn-primary" onclick="runPreview()">Preview Changes</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 3: Preview & Apply -->
+    <div class="step" id="step3">
+      <div class="step-header" onclick="toggleStep('step3')">
+        <div class="step-num" id="step3-num">3</div>
+        <span>Preview &amp; Apply</span>
+      </div>
+      <div class="step-body" id="step3-body">
+        <div id="preview-content"><div class="empty-state">Run preview first.</div></div>
+        <div class="actions" id="apply-actions" style="display:none">
+          <button class="btn btn-success" onclick="applyChanges()">Apply Changes</button>
+          <button class="btn btn-outline" onclick="runPreview()">Re-preview</button>
+        </div>
+        <div id="apply-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Connection Modal -->
+<div class="modal-overlay" id="conn-modal">
+  <div class="modal">
+    <h3>Add Database Connection</h3>
+    <label>Connection Name</label>
+    <input id="c-name" placeholder="e.g. prod-postgres">
+    <label>Database Type</label>
+    <select id="c-type" onchange="toggleDriverField()">
+      <option value="postgres">PostgreSQL</option>
+      <option value="sqlserver">SQL Server</option>
+    </select>
+    <div class="row2">
+      <div>
+        <label>Host</label>
+        <input id="c-host" placeholder="localhost">
+      </div>
+      <div>
+        <label>Port</label>
+        <input id="c-port" type="number" placeholder="5432">
+      </div>
+    </div>
+    <label>Database</label>
+    <input id="c-db" placeholder="mydb">
+    <div class="row2">
+      <div>
+        <label>Username</label>
+        <input id="c-user" placeholder="postgres">
+      </div>
+      <div>
+        <label>Password</label>
+        <input id="c-pass" type="password">
+      </div>
+    </div>
+    <div id="driver-field" style="display:none">
+      <label>ODBC Driver</label>
+      <input id="c-driver" placeholder="ODBC Driver 17 for SQL Server">
+    </div>
+    <div class="actions">
+      <button class="btn btn-outline" onclick="closeAddConn()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveConnection()">Connect &amp; Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let activeConn = null;
+
+// ── Connections ──────────────────────────────────────────────────────────
+async function loadConnections() {
+  const res = await fetch('/api/connections');
+  const names = await res.json();
+  const ul = document.getElementById('conn-list');
+  ul.innerHTML = '';
+  names.forEach(n => {
+    const li = document.createElement('li');
+    li.dataset.name = n;
+    li.innerHTML = `<span>${n}</span><button class="btn btn-danger" style="padding:.2rem .5rem;font-size:.75rem" onclick="deleteConn(event,'${n}')">✕</button>`;
+    li.onclick = (e) => { if (e.target.tagName !== 'BUTTON') selectConn(n); };
+    if (n === activeConn) li.classList.add('active');
+    ul.appendChild(li);
+  });
+}
+
+function openAddConn() { document.getElementById('conn-modal').classList.add('open'); }
+function closeAddConn() { document.getElementById('conn-modal').classList.remove('open'); }
+
+function toggleDriverField() {
+  const t = document.getElementById('c-type').value;
+  document.getElementById('driver-field').style.display = t === 'sqlserver' ? 'block' : 'none';
+  document.getElementById('c-port').placeholder = t === 'sqlserver' ? '1433' : '5432';
+}
+
+async function saveConnection() {
+  const payload = {
+    name: v('c-name'), db_type: v('c-type'), host: v('c-host'),
+    port: parseInt(v('c-port')) || (v('c-type') === 'postgres' ? 5432 : 1433),
+    database: v('c-db'), username: v('c-user'), password: v('c-pass'),
+    driver: v('c-driver') || null,
+  };
+  if (!payload.name || !payload.host || !payload.database) { toast('Fill in all required fields', 'error'); return; }
+  const res = await fetch('/api/connections', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+  if (!res.ok) { const e = await res.json(); toast(e.detail, 'error'); return; }
+  closeAddConn();
+  toast('Connection saved', 'success');
+  loadConnections();
+}
+
+async function deleteConn(e, name) {
+  e.stopPropagation();
+  await fetch(`/api/connections/${name}`, { method: 'DELETE' });
+  if (activeConn === name) { activeConn = null; resetUI(); }
+  loadConnections();
+}
+
+function selectConn(name) {
+  activeConn = name;
+  document.querySelectorAll('.conn-list li').forEach(li => li.classList.toggle('active', li.dataset.name === name));
+  document.getElementById('no-conn-msg').style.display = 'none';
+  document.getElementById('table-col-form').style.display = 'block';
+  loadTables();
+}
+
+// ── Tables / Columns ─────────────────────────────────────────────────────
+async function loadTables() {
+  if (!activeConn) return;
+  const schema = v('schema-input') || 'public';
+  const res = await fetch(`/api/connections/${activeConn}/tables?schema=${encodeURIComponent(schema)}`);
+  if (!res.ok) { toast('Could not load tables', 'error'); return; }
+  const tables = await res.json();
+  const sel = document.getElementById('table-select');
+  sel.innerHTML = '<option value="">— select table —</option>';
+  tables.forEach(t => { const o = document.createElement('option'); o.value = t; o.textContent = t; sel.appendChild(o); });
+  document.getElementById('col-select').innerHTML = '<option value="">— select column —</option>';
+}
+
+async function loadColumns() {
+  const table = v('table-select');
+  if (!table || !activeConn) return;
+  const schema = v('schema-input') || 'public';
+  const res = await fetch(`/api/connections/${activeConn}/tables/${encodeURIComponent(table)}/columns?schema=${encodeURIComponent(schema)}`);
+  const cols = await res.json();
+  const sel = document.getElementById('col-select');
+  sel.innerHTML = '<option value="">— select column —</option>';
+  cols.forEach(c => { const o = document.createElement('option'); o.value = c.column_name; o.textContent = `${c.column_name} (${c.data_type})`; sel.appendChild(o); });
+}
+
+function resetTableList() {
+  document.getElementById('table-select').innerHTML = '<option value="">— select table —</option>';
+  document.getElementById('col-select').innerHTML = '<option value="">— select column —</option>';
+}
+
+function markStep1Done() {
+  const done = !!v('col-select');
+  document.getElementById('step1-num').classList.toggle('done', done);
+  if (done) openStep('step2');
+}
+
+// ── Mappings ─────────────────────────────────────────────────────────────
+let mappingId = 0;
+function addMappingRow(from = '', to = '') {
+  const id = mappingId++;
+  const tr = document.createElement('tr');
+  tr.id = `mr-${id}`;
+  tr.innerHTML = `
+    <td><input type="text" value="${esc(from)}" placeholder="current value" oninput="markStep2Dirty()"></td>
+    <td><input type="text" value="${esc(to)}" placeholder="new value" oninput="markStep2Dirty()"></td>
+    <td><button class="del-btn" onclick="document.getElementById('mr-${id}').remove()">✕</button></td>`;
+  document.getElementById('mapping-rows').appendChild(tr);
+}
+
+function getMappings() {
+  return [...document.querySelectorAll('#mapping-rows tr')].map(tr => {
+    const inputs = tr.querySelectorAll('input');
+    return { from: inputs[0].value.trim(), to: inputs[1].value.trim() };
+  }).filter(m => m.from !== '');
+}
+
+function markStep2Dirty() {
+  document.getElementById('step2-num').classList.remove('done');
+}
+
+// ── Preview ──────────────────────────────────────────────────────────────
+async function runPreview() {
+  const mappings = getMappings();
+  if (!mappings.length) { toast('Add at least one mapping', 'error'); return; }
+  if (!activeConn || !v('table-select') || !v('col-select')) { toast('Complete step 1 first', 'error'); return; }
+
+  const payload = {
+    connection: activeConn,
+    schema: v('schema-input') || 'public',
+    table: v('table-select'),
+    column: v('col-select'),
+    mappings,
+  };
+  const res = await fetch('/api/preview', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+  if (!res.ok) { const e = await res.json(); toast(e.detail, 'error'); return; }
+  const data = await res.json();
+
+  document.getElementById('step2-num').classList.add('done');
+  document.getElementById('step3-num').classList.remove('done');
+  openStep('step3');
+  document.getElementById('apply-result').style.display = 'none';
+
+  const pc = document.getElementById('preview-content');
+  if (!data.rows.length) {
+    pc.innerHTML = '<div class="empty-state">No rows match the specified mappings.</div>';
+    document.getElementById('apply-actions').style.display = 'none';
+    return;
+  }
+
+  let html = `<p style="margin-bottom:.75rem;font-size:.9rem">
+    <strong>${data.total_affected}</strong> row(s) will be updated in
+    <strong>${v('schema-input') || 'public'}.${v('table-select')}</strong> column
+    <strong>${v('col-select')}</strong>.
+  </p>
+  <table class="preview-table">
+    <thead><tr><th>Current Value</th><th></th><th>New Value</th><th>Row Count</th></tr></thead>
+    <tbody>`;
+  data.rows.forEach(r => {
+    html += `<tr>
+      <td>${esc(r.current_value)}</td>
+      <td class="arrow">→</td>
+      <td>${esc(r.new_value)}</td>
+      <td><span class="count-badge">${r.row_count}</span></td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  pc.innerHTML = html;
+  document.getElementById('apply-actions').style.display = 'flex';
+}
+
+// ── Apply ────────────────────────────────────────────────────────────────
+async function applyChanges() {
+  if (!confirm('Apply changes to the database? This cannot be undone.')) return;
+  const payload = {
+    connection: activeConn,
+    schema: v('schema-input') || 'public',
+    table: v('table-select'),
+    column: v('col-select'),
+    mappings: getMappings(),
+  };
+  const res = await fetch('/api/apply', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+  if (!res.ok) { const e = await res.json(); toast(e.detail, 'error'); return; }
+  const data = await res.json();
+  document.getElementById('step3-num').classList.add('done');
+  const el = document.getElementById('apply-result');
+  el.style.display = 'block';
+  el.textContent = `✓ ${data.updated} row(s) successfully updated.`;
+  document.getElementById('apply-actions').style.display = 'none';
+  toast(`${data.updated} rows updated`, 'success');
+}
+
+// ── UI helpers ───────────────────────────────────────────────────────────
+function toggleStep(id) {
+  document.getElementById(`${id}-body`).classList.toggle('open');
+}
+function openStep(id) {
+  document.getElementById(`${id}-body`).classList.add('open');
+}
+function resetUI() {
+  document.getElementById('no-conn-msg').style.display = 'block';
+  document.getElementById('table-col-form').style.display = 'none';
+}
+function v(id) { return document.getElementById(id).value; }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function toast(msg, type = 'success') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = `toast ${type} show`;
+  setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+loadConnections();
+addMappingRow(); // start with one empty row
+</script>
+</body>
+</html>
